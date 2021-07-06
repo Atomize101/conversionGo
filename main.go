@@ -6,10 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sort"
 )
 
-type Result struct {
+/* type Result struct {
 	Success   bool
 	Timestamp int
 	Base      string
@@ -24,41 +23,47 @@ type Error struct {
 		Type string
 		Info string
 	}
-}
+} */
 
-func main() {
-	url := "http://data.fixer.io/api/latest?access_key=49fd52932dfdb84310a3dcfa77c25beb"
+var apis map[int]string
 
+func fetchData(API int) {
+	url := apis[API]
 	if resp, err := http.Get(url); err == nil {
 		defer resp.Body.Close()
 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
-			var result Result
+
+			var result map[string]interface{}
+
 			json.Unmarshal([]byte(body), &result)
-			if result.Success {
-				// create an array to store all the keys
-				keys := make([]string, 0,
-					len(result.Rates))
-
-				// get all the keys
-				for k := range result.Rates {
-					keys = append(keys, k)
+			switch API {
+			case 1: // for the Fixer API
+				if result["success"] == true {
+					fmt.Println(result["rates"].(map[string]interface{})["USD"])
+				} else {
+					fmt.Println(result["error"].(map[string]interface{})["info"])
 				}
-
-				// sort the keys
-				sort.Strings(keys)
-
-				// Print the keys and values in alphabetical order
-				for _, k := range keys {
-					fmt.Println(k, result.Rates[k])
+			case 2: //for openweater API
+				if result["main"] != nil {
+					fmt.Println(result["main"].(map[string]interface{})["temp"])
+				} else {
+					fmt.Println(result["message"])
 				}
-			} else {
-				var err Error
-				json.Unmarshal([]byte(body), &err)
-				fmt.Println(err.Error.Info)
 			}
+		} else {
+			log.Fatal(err)
 		}
-	} else {
-		log.Fatal(err)
 	}
-	fmt.Println("Done")
+}
+
+func main() {
+	/* url := "http://data.fixer.io/api/latest?access_key=49fd52932dfdb84310a3dcfa77c25beb" */
+	apis = make(map[int]string)
+
+	apis[1] = "http://data.fixer.io/api/latest?access_key=" + "49fd52932dfdb84310a3dcfa77c25beb"
+
+	apis[2] = "http://api.openweathermap.org/data/2.5/weather?" + "q=SINGAPORE&appid=7678666e1317103c103cf81584eebb14"
+
+	fetchData(1)
+	fetchData(2)
 }
